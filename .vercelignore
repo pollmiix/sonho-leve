@@ -1,0 +1,10 @@
+.git
+.store-cleanup
+.loteria-publicacao-*
+.portal-browser-*
+tests
+*-preview.png
+debug.log
+loteria-github.zip
+loteria-publicacao.json
+.env*

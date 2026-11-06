@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light">
+  <title>Prévia do site — computador e celular</title>
+  <style>
+    *{box-sizing:border-box}
+    :root{font-family:Arial,sans-serif;color:#18344b;background:#e9eef3}
+    body{margin:0;height:100dvh;display:flex;flex-direction:column;overflow:hidden}
+    button,select,input{font:inherit}
+    button,select,a{touch-action:manipulation}
+    button,select{min-height:42px;border:1px solid #c9d4df;border-radius:8px;background:#fff;color:inherit;padding:9px 12px}
+    button{cursor:pointer}
+    button:hover{background:#edf5fc}
+    button:focus-visible,select:focus-visible,a:focus-visible,input:focus-visible{outline:3px solid #f4ad32;outline-offset:3px}
+    header{position:sticky;top:0;z-index:2;flex-shrink:0;background:#fff;border-bottom:1px solid #ccd7e1;box-shadow:0 3px 15px #18344b08}
+    .toolbar{max-width:1800px;margin:auto;padding:16px 24px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+    .brand{margin-right:auto}
+    h1{font-size:19px;margin:0 0 4px}
+    .brand p{font-size:13px;margin:0;color:#62768a}
+    .field{display:flex;flex-direction:column;gap:5px;font-size:12px;color:#62768a}
+    .field select{font-size:14px;color:#18344b}
+    #refresh{align-self:flex-end;background:#0067b1;border-color:#0067b1;color:#fff;font-weight:700}
+    #refresh:hover{background:#005391}
+    .auto{display:flex;align-items:center;gap:7px;font-size:13px;white-space:nowrap;min-height:42px;align-self:flex-end}
+    .auto input{accent-color:#0067b1;width:17px;height:17px;margin:0}
+    .open{align-self:flex-end;display:inline-flex;align-items:center;min-height:42px;font-size:14px;color:#0067b1;text-decoration:none;padding:8px 0}
+    .open:hover{text-decoration:underline}
+    .info{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:9px 24px;background:#f6f9fc;color:#62768a;font-size:12px;line-height:1.5}
+    .info p{margin:0}
+    #status{flex-shrink:0}
+    main{padding:24px;overflow:auto;flex:1;min-height:0}
+    .screen{position:relative;margin:0 auto;background:#fff;box-shadow:0 12px 40px #18344b29;border-radius:10px;overflow:hidden;outline:1px solid #18344b17}
+    iframe{display:block;border:0;background:#fff;transform-origin:top left}
+    .phone .screen{border-radius:24px;outline:6px solid #263546;box-shadow:0 16px 45px #18344b40}
+    .phone{padding-top:30px;padding-bottom:30px;scrollbar-width:none}
+    .phone::-webkit-scrollbar{display:none;width:0;height:0}
+    @media(max-width:720px){.toolbar{padding:14px 16px;gap:12px}.brand{width:100%}.field{flex:1;min-width:130px}.field select{width:100%;max-width:100%}.info{padding:9px 16px;flex-wrap:wrap}main{padding:20px 14px}.auto{margin-right:auto}.brand p{line-height:1.5}}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="toolbar">
+      <div class="brand"><h1>Prévia do site</h1><p>Acompanhe as alterações no computador e no celular.</p></div>
+      <label class="field">Página
+        <select id="page">
+          <option value="index.html">Loja · Máscara Bluetooth RelaxSound</option>
+          <option value="carrinho-loja.html">Carrinho da loja</option>
+          <option value="checkout-loja.html">Checkout da loja</option>
+        </select>
+      </label>
+      <label class="field">Tela
+        <select id="device">
+          <option value="desktop">Computador · 1920 × 1080</option>
+          <option value="notebook">Notebook · 1366 × 768</option>
+          <option value="phone">Celular · 390 × 844</option>
+          <option value="small">Celular pequeno · 360 × 800</option>
+          <option value="tablet">Tablet · 768 × 1024</option>
+        </select>
+      </label>
+      <label class="field">Escala
+        <select id="scale"><option value="fit">Ajustar à janela</option><option value="actual">100% · tamanho real</option></select>
+      </label>
+      <button type="button" id="refresh">Atualizar prévia</button>
+      <label class="auto"><input type="checkbox" id="auto"> Automático · 10 s</label>
+      <a class="open" id="open" href="index.html" target="_blank" rel="noopener">Abrir loja ↗</a>
+    </div>
+    <div class="info">
+      <p id="dimensions">Carregando prévia…</p>
+      <p id="status" role="status" aria-live="polite">Aguarde.</p>
+    </div>
+  </header>
+  <main id="stage" aria-label="Visualização do site">
+    <div class="screen" id="screen"><iframe id="preview" title="Prévia interativa do site"></iframe></div>
+  </main>
+  <script>
+    (() => {
+      const $ = id => document.getElementById(id);
+      const sizes = {desktop:[1920,1080],notebook:[1366,768],phone:[390,844],small:[360,800],tablet:[768,1024]};
+      const allowedPages = [...$('page').options].map(option => option.value);
+      let timer = null;
+      let lastScroll = null;
+      let restoreScroll = false;
+      let loading = false;
+      function saveView() {
+        try { localStorage.setItem('site-preview-options', JSON.stringify({page:$('page').value,device:$('device').value,scale:$('scale').value})); } catch (_) {}
+      }
+      try {
+        const saved = JSON.parse(localStorage.getItem('site-preview-options'));
+        if (saved) {
+          if (allowedPages.includes(saved.page)) $('page').value = saved.page;
+          if (Object.hasOwn(sizes,saved.device)) $('device').value = saved.device;
+          if (['fit','actual'].includes(saved.scale)) $('scale').value = saved.scale;
+        }
+      } catch (_) {}
+      // Direct links let the preview open on the requested page and screen size.
+      const requestedView = new URLSearchParams(location.search);
+      if (allowedPages.includes(requestedView.get('page'))) $('page').value = requestedView.get('page');
+      if (Object.hasOwn(sizes,requestedView.get('device'))) $('device').value = requestedView.get('device');
+      if (['fit','actual'].includes(requestedView.get('scale'))) $('scale').value = requestedView.get('scale');
+      function resize() {
+        const [width,height] = sizes[$('device').value];
+        const isPhone = ['phone','small'].includes($('device').value);
+        $('stage').classList.toggle('phone', isPhone);
+        const stageStyle = getComputedStyle($('stage'));
+        const available = $('stage').clientWidth - parseFloat(stageStyle.paddingLeft) - parseFloat(stageStyle.paddingRight) - 12;
+        const availableHeight = $('stage').clientHeight - parseFloat(stageStyle.paddingTop) - parseFloat(stageStyle.paddingBottom) - 12;
+        const fitScale = Math.min(1, Math.max(1,available) / width, isPhone ? Math.max(1,availableHeight) / height : 1);
+        const scale = $('scale').value === 'actual' ? 1 : fitScale;
+        $('preview').style.width = width + 'px';
+        $('preview').style.height = height + 'px';
+        $('preview').style.transform = `scale(${scale})`;
+        $('screen').style.width = width * scale + 'px';
+        $('screen').style.height = height * scale + 'px';
+        $('dimensions').textContent = `${width} × ${height} · escala ${Math.round(scale * 100)}% · navegue e role dentro da prévia.`;
+        saveView();
+      }
+      function load(preserve = false) {
+        if (loading) return;
+        loading = true;
+        lastScroll = null;
+        restoreScroll = preserve;
+        let destination = new URL($('page').value, location.href);
+        if (preserve) {
+          try {
+            const frame = $('preview').contentWindow;
+            const current = new URL(frame.location.href);
+            const isLocalPage = allowedPages.some(page => current.pathname === new URL(page,location.href).pathname);
+            if (isLocalPage) { destination = current; lastScroll = {x:frame.scrollX,y:frame.scrollY}; }
+          } catch (_) { /* File previews can restrict access to a sibling document. */ }
+        }
+        destination.searchParams.set('_preview', Date.now().toString());
+        $('open').href = destination.href;
+        $('status').textContent = 'Carregando…';
+        $('preview').src = destination.href;
+        saveView();
+      }
+      $('preview').addEventListener('load', () => {
+        loading = false;
+        if (restoreScroll && lastScroll) {
+          try {
+            const frame = $('preview').contentWindow;
+            const frameDocument = frame.document;
+            const position = {...lastScroll};
+            frameDocument.fonts.ready.then(() => requestAnimationFrame(() => {
+              if (frame.document === frameDocument) frame.scrollTo({left:position.x,top:position.y,behavior:'instant'});
+            }));
+          } catch (_) {}
+        }
+        $('status').textContent = 'Atualizado às ' + new Date().toLocaleTimeString('pt-BR');
+      });
+      $('page').addEventListener('change', () => load());
+      $('device').addEventListener('change', resize);
+      $('scale').addEventListener('change', resize);
+      $('refresh').addEventListener('click', () => load(true));
+      $('auto').addEventListener('change', () => {
+        clearInterval(timer);
+        if ($('auto').checked) timer = setInterval(() => load(true),10000);
+      });
+      window.addEventListener('resize', resize);
+      new ResizeObserver(resize).observe($('stage'));
+      resize();
+      load();
+    })();
+  </script>
+</body>
+</html>
